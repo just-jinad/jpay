@@ -119,4 +119,19 @@ public class TransactionController {
 
         return ResponseEntity.ok(saved);
     }
+
+    //history
+    @GetMapping("/history/{accountId}")
+    public ResponseEntity<List<Transaction>> getHistory(@PathVariable String accountId){
+        Optional<Account> accountOpt = accountRepository.findById(accountId);
+
+        if (accountOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        Account account = accountOpt.get();
+        List<Transaction> sent = transactionRepository.findByFromAccount(account);
+        List<Transaction> received = transactionRepository.findByToAccount(account);
+        sent.addAll(received);
+        return ResponseEntity.ok(sent);
+    }
 }
