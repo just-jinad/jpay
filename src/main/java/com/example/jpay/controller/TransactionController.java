@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 // dto
 import com.example.jpay.dto.DepositRequest;
@@ -48,8 +49,37 @@ public class TransactionController {
         tx.setFromAccount(account);
         tx.setType(TransactionType.DEPOSIT);
         tx.setAmount(request.amount());
+        tx.setCreatedAt(LocalDateTime.now());
         Transaction saved = transactionRepository.save(tx);
 
         return ResponseEntity.ok(saved);
+    }
+
+    @PostMapping("/withdraw")
+    public ResponseEntity<Transaction> withdraw(@RequestBody WithdrawRequest request){
+        Optional<Account> accountOpt = accountRepository.findById(request.accountId());
+        if (accountOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+        Account account = accountOpt.get();
+        BigDecimal currentBalance = new BigDecimal(account.getBalance());
+       
+        if (currentBalance.compareTo(request.amount()) < 0) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+        BigDecimal newBalance = currentBalance.subtract(request.amount());
+        account.setBalance(newBalance.toString());
+        accountRepository.save(account);
+
+        Transaction tx = new Transaction();
+        tx.setFromAccount(account); 
+        tx.setAmount(newBalance);
+        tx.setType(TransactionType.WITHDRAWAL);
+        tx.setCreatedAt(LocalDateTime.now());
+
+       Transaction saved =  transactionRepository.save(tx);
+       return ResponseEntity.ok(saved);
     }
 }
