@@ -82,4 +82,41 @@ public class TransactionController {
        Transaction saved =  transactionRepository.save(tx);
        return ResponseEntity.ok(saved);
     }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<Transaction> transfer(@RequestBody TransferRequest request){
+        Optional<Account> fromOpt  = accountRepository.findById(request.fromAccountId());
+        Optional<Account> toOpt = accountRepository.findById(request.toAccountId());
+
+        if (fromOpt.isEmpty() || toOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+        Account from = fromOpt.get();
+        BigDecimal currentBalance = new BigDecimal(from.getBalance());
+        Account to = toOpt.get();
+        BigDecimal cBalance = new BigDecimal(to.getBalance());
+
+        if (currentBalance.compareTo(request.amount()) < 0) {
+            return ResponseEntity.badRequest().body(null); // insufficient balance.
+        }
+
+        BigDecimal newBalance = currentBalance.subtract(request.amount());
+        from.setBalance(newBalance.toString());
+        accountRepository.save(from);
+
+        BigDecimal nbalance = cBalance.add(request.amount());
+        to.setBalance(nbalance.toString());
+        accountRepository.save(to);
+
+        Transaction tx = new Transaction();
+        tx.setFromAccount(from);
+        tx.setToAccount(to);
+        tx.setType(TransactionType.TRANSFER);
+        tx.setAmount(request.amount());
+        tx.setCreatedAt(LocalDateTime.now());
+        Transaction saved  = transactionRepository.save(tx);
+
+        return ResponseEntity.ok(saved);
+    }
 }
